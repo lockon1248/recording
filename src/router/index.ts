@@ -5,7 +5,7 @@ const routes = [
     path: '/',
     name: 'home',
     // 雖然 Home 是首頁，但建議也用動態加載
-    component: () => import('@/App.vue'),
+    component: () => import('@/views/Home.vue'),
     meta: { title: '三商美邦' }
   },
   {
@@ -13,12 +13,6 @@ const routes = [
     name: 'login',
     component: () => import('@/views/Login.vue'),
     meta: { title: '登入' }
-  },
-  {
-    path: '/home',
-    name: 'home',
-    component: () => import('@/views/Home.vue'),
-    meta: { title: '首頁 - 三商美邦' }
   },
   {
     path: '/recordingList',

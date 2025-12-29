@@ -22,7 +22,7 @@ const handleLogin = () => {
   // 模擬登入
   setTimeout(() => {
     localStorage.setItem('user_token', 'active')
-    router.push('/home')
+    router.push('/')
     loading.value = false
   }, 1000)
 }

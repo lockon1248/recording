@@ -102,12 +102,8 @@ const caseData = ref([
 ])
 
 const handleGo = (record: any) => {
-  console.log('跳轉至錄音頁面', record.caseId)
+  console.log(record)
   router.push('/recordingView')
-}
-
-const handleDetail = (record: any) => {
-  console.log('查看案件詳情', record.caseId)
 }
 </script>
 
