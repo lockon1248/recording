@@ -1,0 +1,9 @@
+var Lame;
+var Presets;
+var GainAnalysis;
+var QuantizePVT;
+var Quantize;
+var Takehiro;
+var Reservoir;
+var MPEGMode;
+var BitStream;

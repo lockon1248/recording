@@ -25,9 +25,20 @@ const routes = [
     name: 'recording',
     component: () => import('@/views/RecordingView.vue'),
     meta: { title: '三商美邦-錄音' }
+  },
+  {
+    path: '/memberList',
+    name: 'memberList',
+    component: () => import('@/views/MemberList.vue'),
+    meta: { title: '三商美邦-人員管理' }
+  },
+  {
+    path: '/memberForm/:id?',
+    name: 'memberForm',
+    component: () => import('@/views/MemberForm.vue'),
+    meta: { title: '三商美邦-人員管理' }
   }
 ]
-
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes,

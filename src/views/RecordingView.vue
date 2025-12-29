@@ -1,9 +1,26 @@
 <script setup lang="ts">
 import router from '@/router'
 import { LeftOutlined, CloudUploadOutlined } from '@ant-design/icons-vue'
+import { reactive, computed, ref } from 'vue'
+import MicRecorder from 'mic-recorder-to-mp3'
+type ScriptItem = {
+  id: number
+  title: string
+  member: string
+  content: string
+  note: string
+  customer: string
+  order: string
+  recordStatus?: number
+  audioBlob?: Blob
+  audioUrl?: string
+}
+
+const activeItem = ref<ScriptItem | null>(null)
+const recorder = new MicRecorder({ bitRate: 128 })
 
 // 模擬文稿數據
-const scripts = [
+const scripts = reactive<ScriptItem[]>([
   {
     id: 1,
     title: '開始錄音',
@@ -11,7 +28,8 @@ const scripts = [
     content: `測O音先生，您好！我是服務於三商美邦人壽的林O芬，業務員登入字號是0105308576，並已獲得授權招攬。根據法律規定，我將以錄音方式紀錄本次銷售過程。請問您是否同意？`,
     note: '(請依錄音對象唸出客戶姓名，若客戶不同意，則本次銷售過程終止;如為共同承攬件，兩名業務員所屬公司、姓名、登錄字號均須告知。)',
     customer: '客戶',
-    order: '同意 / 不同意'
+    order: '同意 / 不同意',
+    recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
   },
   {
     id: 2,
@@ -20,7 +38,8 @@ const scripts = [
     content: `您所購買的是三商美邦人壽發行的投資型保險商品...`,
     note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
     customer: '客戶',
-    order: '同意 / 不同意'
+    order: '同意 / 不同意',
+    recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
   },
   {
     id: 2,
@@ -29,7 +48,8 @@ const scripts = [
     content: `您所購買的是三商美邦人壽發行的投資型保險商品...`,
     note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
     customer: '客戶',
-    order: '同意 / 不同意'
+    order: '同意 / 不同意',
+    recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
   },
   {
     id: 2,
@@ -38,7 +58,8 @@ const scripts = [
     content: `您所購買的是三商美邦人壽發行的投資型保險商品...`,
     note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
     customer: '客戶',
-    order: '同意 / 不同意'
+    order: '同意 / 不同意',
+    recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
   },
   {
     id: 2,
@@ -47,12 +68,105 @@ const scripts = [
     content: `您所購買的是三商美邦人壽發行的投資型保險商品...`,
     note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
     customer: '客戶',
-    order: '同意 / 不同意'
+    order: '同意 / 不同意',
+    recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
   }
-]
+])
 
 const backToList = () => {
   router.push('/recordingList')
+}
+// 2. 使用 computed 控制樣式邏輯
+// 這裡我們回傳一個閉包函式，讓 template 可以根據 status 取得對應設定
+const getStatusStyle = computed(() => {
+  return (status: number | undefined) => {
+    switch (status) {
+      case 1:
+        return { text: '錄音結束', color: 'bg-green-500', pulse: true }
+      case 2:
+        return { text: '重新錄音', color: 'bg-black', pulse: false }
+      default:
+        return { text: '開始錄音', color: 'bg-red-500', pulse: false }
+    }
+  }
+})
+
+
+
+const checkMicrophoneReady = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return false
+  }
+  if (!window.isSecureContext) {
+    return false
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    stream.getTracks().forEach((track) => track.stop())
+    return true
+  } catch (_error: unknown) {
+    return false
+  }
+}
+
+const startRecording = async (item: ScriptItem) => {
+  if (item.audioUrl) {
+    URL.revokeObjectURL(item.audioUrl)
+    item.audioUrl = undefined
+    item.audioBlob = undefined
+  }
+  await recorder.start()
+  item.recordStatus = 1
+  activeItem.value = item
+}
+
+const stopRecording = async (item: ScriptItem) => {
+  const [, blob] = await recorder.stop().getMp3()
+  item.audioBlob = blob
+  item.audioUrl = URL.createObjectURL(blob)
+  item.recordStatus = 2
+  activeItem.value = null
+}
+
+const playRecording = (item: ScriptItem) => {
+  if (!item.audioUrl) return
+  const audio = new Audio(item.audioUrl)
+  audio.play()
+}
+
+const isRecordingDisabled = (item: ScriptItem) => {
+  return !!activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1
+}
+
+// 3. 切換狀態的邏輯
+const recording = async (item: ScriptItem) => {
+  const isReady = await checkMicrophoneReady()
+  if (!isReady) return
+  // 同一筆已在錄音中：這次點擊視為「停止」
+  if (item.recordStatus === 1 && activeItem.value === item) {
+    try {
+      await stopRecording(item)
+    } catch (_error: unknown) {
+      item.recordStatus = 0
+      activeItem.value = null
+    }
+    return
+  }
+  // 另一筆在錄音中：先停止前一筆，再切換到新的
+  if (activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1) {
+    try {
+      await stopRecording(activeItem.value)
+    } catch (_error: unknown) {
+      activeItem.value.recordStatus = 0
+    }
+  }
+  // 開始或重新開始錄音
+  try {
+    await startRecording(item)
+  } catch (_error: unknown) {
+    item.recordStatus = 0
+    activeItem.value = null
+  }
 }
 </script>
 <template>
@@ -81,20 +195,32 @@ const backToList = () => {
           </tr>
         </thead>
         <tbody class="divide-y-1 divide-gray-300">
-          <tr v-for="item in scripts" :key="item.id">
-            <td class="w-48 bg-[#FFF7ED] align-top p-6">
+          <tr v-for="item in scripts" :key="item.id" :class="{ 'bg-gray-200': item.recordStatus === 2 }">
+            <td class="w-48 align-top p-6" :class="item.recordStatus === 2 ? 'bg-gray-200' : 'bg-[#FFF7ED]'">
               <div class="flex flex-col items-center gap-4">
                 <div class="text-gray-500 font-bold mb-2">{{ item.id }}</div>
-                <a-button class="recording-btn group">
-                  <div class="flex gap-1 items-center">
+                <a-button
+                  class="recording-btn group"
+                  :disabled="isRecordingDisabled(item)"
+                  @click="recording(item)"
+                >
+                  <div class="flex items-center">
                     <span
-                      class="w-3 h-3 rounded-full bg-red-500 mr-2 group-hover:animate-pulse"
+                      :class="[
+                        'w-3 h-3 rounded-full mr-2 transition-colors duration-300',
+                        getStatusStyle(item.recordStatus).color,
+                        getStatusStyle(item.recordStatus).pulse ? 'animate-pulse' : ''
+                      ]"
                     ></span>
-                    <span class="font-bold">開始錄音</span>
+                    <span class="font-bold text-gray-700">
+                      {{ getStatusStyle(item.recordStatus).text }}
+                    </span>
                   </div>
                 </a-button>
-                <a-button class="play-btn" disabled>
-                  <span class="text-gray-400 font-bold">聽取錄音內容</span>
+                <a-button class="play-btn" :disabled="!item.audioUrl" @click="playRecording(item)">
+                  <span :class="item.audioUrl ? 'text-gray-900' : 'text-gray-400'" class="font-bold">
+                    聽取錄音內容
+                  </span>
                 </a-button>
               </div>
             </td>
@@ -134,12 +260,12 @@ const backToList = () => {
 table,
 th,
 td {
-  border: 1px solid #d1d5db; /* 強制加上灰色細邊線 */
+  border: 2px solid #818386; /* 強制加上灰色細邊線 */
 }
 
 /* 表格邊框微調 */
 table {
-  border-left: 1px solid #d1d5db;
-  border-right: 1px solid #d1d5db;
+  border-left: 2px solid #818386;
+  border-right: 2px solid #818386;
 }
 </style>

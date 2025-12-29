@@ -1,6 +1,6 @@
 <template>
   <div class="h-screen flex items-stretch overflow-hidden bg-[#F0F2F5]">
-    <div class="w-64 flex-shrink-0 z-10 shadow-lg">
+    <div class="w-[200px] flex-shrink-0 z-10 shadow-lg">
       <sidebar class="h-full" />
     </div>
     <div class="flex-1 flex flex-col min-w-0">
@@ -14,13 +14,14 @@
             placeholder="搜尋身分證字號或姓名"
             style="width: 350px"
             size="large"
+            v-model:value="searchQuery"
             class="shadow-sm"
           />
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <a-table
             :columns="columns"
-            :data-source="caseData"
+            :data-source="filteredCaseData"
             :pagination="{ pageSize: 10, position: ['bottomRight'] }"
             class="custom-table"
           >
@@ -61,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Sidebar from '@/components/Sidebar.vue'
 
@@ -100,6 +101,20 @@ const caseData = ref([
   }
   // 可以依此類推增加更多資料...
 ])
+
+const searchQuery = ref('')
+const filteredCaseData = computed(() => {
+  const keyword = searchQuery.value.trim().toLowerCase()
+  if (!keyword) return caseData.value
+  return caseData.value.filter((item) => {
+    return (
+      item.caseId.toLowerCase().includes(keyword) ||
+      item.name.toLowerCase().includes(keyword) ||
+      item.idNumber.toLowerCase().includes(keyword) ||
+      item.type.toLowerCase().includes(keyword)
+    )
+  })
+})
 
 const handleGo = (record: any) => {
   console.log(record)
