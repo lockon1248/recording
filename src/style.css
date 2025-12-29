@@ -1,0 +1,44 @@
+/* 1. 讓所有元素繼承 border-box，這樣設定寬度才不會被 padding 撐破 */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* 2. 移除各瀏覽器預設的 margin 和 padding */
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* 3. 讓 body 撐滿畫面，避免錄音 UI 在手機上跑掉 */
+html, body {
+  height: 100%;
+  -webkit-text-size-adjust: 100%; /* 防止 iOS 橫屏時自動放大文字 */
+}
+
+body {
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased; /* 字體渲染優化 */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 4. 圖片、媒體元件預設為區塊元素，避免底部出現莫名間隙 */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* 5. 移除按鈕與輸入框的預設樣式，方便我們自訂錄音按鈕 */
+button, input, select, textarea {
+  font: inherit;
+}
+
+/* 6. 移除清單符號 */
+ul, ol {
+  list-style: none;
+}
+
+/* 7. 讓 a 標籤顏色跟隨父元素且無底線 */
+a {
+  text-decoration: none;
+  color: inherit;
+}
