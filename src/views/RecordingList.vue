@@ -37,7 +37,6 @@
                   {{ record.status }}
                 </a-tag>
               </template>
-
               <template v-else-if="column.key === 'action'">
                 <div class="flex gap-3">
                   <a-button
@@ -52,7 +51,6 @@
             </template>
           </a-table>
         </div>
-
         <div class="mt-auto pt-10 pb-4 text-center text-gray-400 text-xs tracking-widest">
           © 2025 MLI Financial Group. All Rights Reserved.
         </div>
@@ -65,9 +63,8 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Sidebar from '@/components/Sidebar.vue'
-
+const searchQuery = ref('')
 const router = useRouter()
-
 // 定義表格欄位
 const columns = [
   { title: '案件編號', dataIndex: 'caseId', key: 'caseId' },
@@ -78,7 +75,6 @@ const columns = [
   { title: '建立日期', dataIndex: 'date', key: 'date' },
   { title: '操作', key: 'action' }
 ]
-
 // 模擬案件資料
 const caseData = ref([
   {
@@ -102,11 +98,10 @@ const caseData = ref([
   // 可以依此類推增加更多資料...
 ])
 
-const searchQuery = ref('')
 const filteredCaseData = computed(() => {
   const keyword = searchQuery.value.trim().toLowerCase()
   if (!keyword) return caseData.value
-  return caseData.value.filter((item) => {
+  return caseData.value.filter(item => {
     return (
       item.caseId.toLowerCase().includes(keyword) ||
       item.name.toLowerCase().includes(keyword) ||

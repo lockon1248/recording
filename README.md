@@ -1,12 +1,13 @@
 # 錄音管理系統（Recording）
 
-以 Vue 3 + Vite 建置的錄音管理系統前端範例，包含登入、案件清單與錄音文稿頁面。資料為前端模擬，方便快速展示與 UI 開發。
+以 Vue 3 + Vite 建置的錄音管理系統前端範例，包含登入、案件清單、錄音文稿與人員權限管理頁面。資料為前端模擬，方便快速展示與 UI 開發。
 
 ## 主要功能
 
 - 登入頁（簡單帳密驗證 + localStorage token）
 - 錄音案件清單（搜尋輸入框、狀態標籤、進入錄音）
-- 錄音文稿頁（提醒訊息、文稿內容、錄音操作按鈕）
+- 錄音文稿頁（錄音、播放、完成狀態、上傳檢查）
+- 人員權限設定（列表、搜尋、編輯/新增表單）
 - 左側選單與品牌化視覺樣式
 
 ## 技術棧
@@ -15,6 +16,8 @@
 - Vite
 - Vue Router
 - Ant Design Vue
+- Pinia
+- VueUse
 - UnoCSS
 
 ## Node.js 版本
@@ -41,6 +44,8 @@ npm run preview
 - `/home` 首頁（歡迎頁）
 - `/recordingList` 錄音案件清單
 - `/recordingView` 錄音文稿內容
+- `/memberList` 人員權限設定
+- `/memberForm/:id?` 人員新增/編輯表單
 
 ## 登入測試帳號
 
@@ -54,6 +59,7 @@ src/
   views/        頁面（Login / Home / RecordingList / RecordingView）
   components/   共用元件（Sidebar）
   router/       路由與守衛
+  stores/       Pinia Store
   utils/        共用工具
 ```
 

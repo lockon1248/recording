@@ -1,8 +1,83 @@
+<template>
+  <div class="w-full h-full bg-white flex flex-col">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+      <a-button @click="backToList" type="link" class="!flex items-center !text-blue-500">
+        <template #icon><LeftOutlined /></template> Back
+      </a-button>
+      <div class="flex-1 text-center font-bold text-lg">錄音文稿內容</div>
+      <a-button class="!rounded-full !flex items-center shadow-sm border-gray-200" @click="handleUpload">
+        <template #icon><CloudUploadOutlined class="text-orange-500" /></template>
+        錄音上傳
+      </a-button>
+    </div>
+    <div class="bg-gray-50 px-6 py-4 text-center border-b border-gray-200">
+      <span class="font-bold text-gray-700">
+        重要提醒：執行銷售錄音作業時，應確實向客戶解說相關內容，不得僅依範本逐字宣讀。
+      </span>
+    </div>
+    <div class="flex-1 overflow-auto">
+      <table class="w-full border-collapse">
+        <thead class="bg-orange-50 sticky top-0 z-10">
+          <tr class="divide-x border-b text-center">
+            <th class="w-48 py-3 text-mliNavy font-bold">題號 / 操作</th>
+            <th class="py-3 text-mliNavy font-bold">錄音文稿內容</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y-1 divide-gray-300">
+          <tr v-for="item in scripts" :key="item.id" :class="{ 'bg-gray-200': item.recordStatus === 2 }">
+            <td class="w-48 align-top p-6" :class="item.recordStatus === 2 ? 'bg-gray-200' : 'bg-[#FFF7ED]'">
+              <div class="flex flex-col items-center gap-4">
+                <div class="text-gray-500 font-bold mb-2">{{ item.id }}</div>
+                <a-button class="recording-btn group" :disabled="isRecordingDisabled(item)" @click="recording(item)">
+                  <div class="flex items-center">
+                    <span
+                      :class="[
+                        'w-3 h-3 rounded-full mr-2 transition-colors duration-300',
+                        getStatusStyle(item.recordStatus).color,
+                        getStatusStyle(item.recordStatus).pulse ? 'animate-pulse' : ''
+                      ]"
+                    ></span>
+                    <span class="font-bold text-gray-700">
+                      {{ getStatusStyle(item.recordStatus).text }}
+                    </span>
+                  </div>
+                </a-button>
+                <a-button class="play-btn" :disabled="!item.audioUrl" @click="playRecording(item)">
+                  <span :class="item.audioUrl ? 'text-gray-900' : 'text-gray-400'" class="font-bold">
+                    聽取錄音內容
+                  </span>
+                </a-button>
+              </div>
+            </td>
+            <td class="p-6 align-top">
+              <div class="flex flex-col">
+                <span> {{ item.member }}:</span>
+                <span class="whitespace-pre-wrap leading-relaxed text-gray-800 font-medium">
+                  {{ item.content }}
+                </span>
+                <span class="mt-4 text-[#F58220] text-sm italic pt-2">
+                  {{ item.note }}
+                </span>
+              </div>
+              <div class="mt-6 p-3 flex flex-col gap-2">
+                <span>{{ item.customer }}:</span>
+                <span>{{ item.order }}</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <CommonModal v-model:open="modalOpen" :title="modalTitle" :content="modalContent" ok-text="我知道了" />
+  </div>
+</template>
+
 <script setup lang="ts">
-import router from '@/router'
 import { LeftOutlined, CloudUploadOutlined } from '@ant-design/icons-vue'
 import { reactive, computed, ref } from 'vue'
+import router from '@/router'
 import MicRecorder from 'mic-recorder-to-mp3'
+import CommonModal from '@/components/CommonModal.vue'
 type ScriptItem = {
   id: number
   title: string
@@ -15,10 +90,11 @@ type ScriptItem = {
   audioBlob?: Blob
   audioUrl?: string
 }
-
+const modalTitle = ref('')
+const modalContent = ref('')
 const activeItem = ref<ScriptItem | null>(null)
 const recorder = new MicRecorder({ bitRate: 128 })
-
+const modalOpen = ref(false)
 // 模擬文稿數據
 const scripts = reactive<ScriptItem[]>([
   {
@@ -73,9 +149,6 @@ const scripts = reactive<ScriptItem[]>([
   }
 ])
 
-const backToList = () => {
-  router.push('/recordingList')
-}
 // 2. 使用 computed 控制樣式邏輯
 // 這裡我們回傳一個閉包函式，讓 template 可以根據 status 取得對應設定
 const getStatusStyle = computed(() => {
@@ -91,7 +164,9 @@ const getStatusStyle = computed(() => {
   }
 })
 
-
+const backToList = () => {
+  router.push('/recordingList')
+}
 
 const checkMicrophoneReady = async () => {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -102,7 +177,7 @@ const checkMicrophoneReady = async () => {
   }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    stream.getTracks().forEach((track) => track.stop())
+    stream.getTracks().forEach(track => track.stop())
     return true
   } catch (_error: unknown) {
     return false
@@ -138,6 +213,25 @@ const isRecordingDisabled = (item: ScriptItem) => {
   return !!activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1
 }
 
+const showModal = (title: string, content: string) => {
+  modalTitle.value = title
+  modalContent.value = content
+  modalOpen.value = true
+}
+
+const handleUpload = () => {
+  const missingItems = scripts.filter(item => item.recordStatus !== 2 || !item.audioBlob)
+  if (missingItems.length > 0) {
+    const missingList = missingItems.map(item => `#${item.id} ${item.title}`).join('、')
+    showModal('尚有錄音未完成', `以下項目尚未完成錄音：${missingList}\n請先完成錄音再上傳。`)
+    return
+  }
+  console.log(
+    '準備上傳錄音',
+    scripts.map(item => item.audioBlob)
+  )
+}
+
 // 3. 切換狀態的邏輯
 const recording = async (item: ScriptItem) => {
   const isReady = await checkMicrophoneReady()
@@ -169,82 +263,6 @@ const recording = async (item: ScriptItem) => {
   }
 }
 </script>
-<template>
-  <div class="w-full h-full bg-white flex flex-col">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-      <a-button @click="backToList" type="link" class="!flex items-center !text-blue-500">
-        <template #icon><LeftOutlined /></template> Back
-      </a-button>
-      <div class="flex-1 text-center font-bold text-lg">錄音文稿內容</div>
-      <a-button class="!rounded-full !flex items-center shadow-sm border-gray-200">
-        <template #icon><CloudUploadOutlined class="text-orange-500" /></template>
-        錄音上傳
-      </a-button>
-    </div>
-    <div class="bg-gray-50 px-6 py-4 text-center border-b border-gray-200">
-      <span class="font-bold text-gray-700"
-        >重要提醒：執行銷售錄音作業時，應確實向客戶解說相關內容，不得僅依範本逐字宣讀。</span
-      >
-    </div>
-    <div class="flex-1 overflow-auto">
-      <table class="w-full border-collapse">
-        <thead class="bg-orange-50 sticky top-0 z-10">
-          <tr class="divide-x border-b text-center">
-            <th class="w-48 py-3 text-mliNavy font-bold">題號 / 操作</th>
-            <th class="py-3 text-mliNavy font-bold">錄音文稿內容</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y-1 divide-gray-300">
-          <tr v-for="item in scripts" :key="item.id" :class="{ 'bg-gray-200': item.recordStatus === 2 }">
-            <td class="w-48 align-top p-6" :class="item.recordStatus === 2 ? 'bg-gray-200' : 'bg-[#FFF7ED]'">
-              <div class="flex flex-col items-center gap-4">
-                <div class="text-gray-500 font-bold mb-2">{{ item.id }}</div>
-                <a-button
-                  class="recording-btn group"
-                  :disabled="isRecordingDisabled(item)"
-                  @click="recording(item)"
-                >
-                  <div class="flex items-center">
-                    <span
-                      :class="[
-                        'w-3 h-3 rounded-full mr-2 transition-colors duration-300',
-                        getStatusStyle(item.recordStatus).color,
-                        getStatusStyle(item.recordStatus).pulse ? 'animate-pulse' : ''
-                      ]"
-                    ></span>
-                    <span class="font-bold text-gray-700">
-                      {{ getStatusStyle(item.recordStatus).text }}
-                    </span>
-                  </div>
-                </a-button>
-                <a-button class="play-btn" :disabled="!item.audioUrl" @click="playRecording(item)">
-                  <span :class="item.audioUrl ? 'text-gray-900' : 'text-gray-400'" class="font-bold">
-                    聽取錄音內容
-                  </span>
-                </a-button>
-              </div>
-            </td>
-            <td class="p-6 align-top">
-              <div class="flex flex-col">
-                <span> {{ item.member }}: </span>
-                <span class="whitespace-pre-wrap leading-relaxed text-gray-800 font-medium">
-                  {{ item.content }}
-                </span>
-                <span class="mt-4 text-[#F58220] text-sm italic pt-2">
-                  {{ item.note }}
-                </span>
-              </div>
-              <div class="mt-6 p-3 flex flex-col gap-2">
-                <span>{{ item.customer }}:</span>
-                <span>{{ item.order }}</span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</template>
 
 <style scoped>
 /* 為了達成截圖中那種圓潤且有陰影的按鈕效果 */
