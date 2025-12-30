@@ -1,7 +1,12 @@
 <template>
   <a-config-provider :theme="themeConfig" :locale="zhTW">
     <div class="h-screen w-screen flex flex-col overflow-hidden">
-      <router-view />
+      <div class="flex-1 overflow-auto pb-12">
+        <router-view />
+      </div>
+      <div class="fixed bottom-4 w-full pointer-events-none">
+        <AppFooter />
+      </div>
     </div>
   </a-config-provider>
 </template>
@@ -9,6 +14,7 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import zhTW from 'ant-design-vue/es/locale/zh_TW' // 繁體中文語系
+import AppFooter from '@/components/AppFooter.vue'
 
 // 三商美邦主題配置
 const themeConfig = reactive({

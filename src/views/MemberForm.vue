@@ -54,7 +54,6 @@
               <a-select-option value="管理員">管理員</a-select-option>
             </a-select>
           </a-form-item>
-
           <a-form-item label="電子郵件" class="col-span-2">
             <a-input v-model:value="formState.email" placeholder="example@mli.com.tw" class="!h-11" />
           </a-form-item>
@@ -71,7 +70,6 @@
         </div>
       </a-form>
     </div>
-    <div class="text-gray-400 text-xs tracking-widest pb-8">© 2025 MLI Financial Group. All Rights Reserved.</div>
     <CommonModal
       v-model:open="leaveModalOpen"
       :title="leaveTitle"
@@ -87,23 +85,16 @@
 
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
-import { useCloned } from '@vueuse/core'
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useMemberStore, type Member } from '@/stores/member'
 import { LeftOutlined, SaveOutlined } from '@ant-design/icons-vue'
-import { useRouter, useRoute, onBeforeRouteLeave, type RouteLocationRaw } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import CommonModal from '@/components/CommonModal.vue'
+import { useUnsavedWarning } from '@/composables/useUnsavedWarning'
 
 const router = useRouter()
 const route = useRoute()
 const memberStore = useMemberStore()
-const leaveModalOpen = ref(false)
-const pendingRoute = ref<RouteLocationRaw | null>(null)
-const allowLeave = ref(false)
-const leaveTitle = ref('資料尚未儲存')
-const leaveContent = ref('你已修改資料，離開將不會保存。是否仍要離開？')
-// 模式判定
-const isEditMode = ref(false)
 
 const formState = reactive({
   empId: '',
@@ -114,12 +105,21 @@ const formState = reactive({
   isActive: true
 })
 
-const { cloned: snapshot, sync: syncSnapshot } = useCloned(formState, { manual: true, deep: true })
-
-const isDirty = computed(() => {
-  return JSON.stringify(formState) !== JSON.stringify(snapshot.value)
+const {
+  modalOpen: leaveModalOpen,
+  modalTitle: leaveTitle,
+  modalContent: leaveContent,
+  confirmLeave,
+  cancelLeave,
+  requestLeave,
+  syncSnapshot
+} = useUnsavedWarning(formState, {
+  title: '資料尚未儲存',
+  content: '你已修改資料，離開將不會保存。是否仍要離開？'
 })
 
+// 模式判定
+const isEditMode = ref(false)
 const resetForm = () => {
   formState.empId = ''
   formState.name = ''
@@ -156,7 +156,7 @@ onMounted(() => {
 })
 
 const goBack = () => {
-  router.push({ name: 'memberList' })
+  requestLeave({ name: 'memberList' })
 }
 
 const handleSubmit = () => {
@@ -176,27 +176,9 @@ const handleSubmit = () => {
   router.push({ name: 'memberList' })
 }
 
-const confirmLeave = () => {
-  if (!pendingRoute.value) return
-  allowLeave.value = true
-  router.push(pendingRoute.value)
-  pendingRoute.value = null
-}
-
 const stayOnPage = () => {
-  pendingRoute.value = null
+  cancelLeave()
 }
-
-onBeforeRouteLeave(to => {
-  if (allowLeave.value) {
-    allowLeave.value = false
-    return true
-  }
-  if (!isDirty.value) return true
-  pendingRoute.value = to
-  leaveModalOpen.value = true
-  return false
-})
 </script>
 
 <style scoped>

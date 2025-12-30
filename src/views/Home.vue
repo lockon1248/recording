@@ -10,9 +10,6 @@
         <div class="w-12 h-1 bg-[#FF9900] mx-auto"></div>
         <p class="mt-10 text-xl font-light tracking-widest text-gray-600">歡迎使用錄音管理系統</p>
       </div>
-      <div class="absolute bottom-10 text-gray-500 text-xs tracking-widest">
-        © 2025 MLI Financial Group. All Rights Reserved.
-      </div>
     </div>
   </div>
 </template>
@@ -20,23 +17,9 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import Sidebar from '@/components/Sidebar.vue'
-
-const checkMicrophone = async () => {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    return
-  }
-  if (!window.isSecureContext) {
-    return
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    stream.getTracks().forEach(track => track.stop())
-  } catch (error: any) {
-    void error
-  }
-}
+import { checkMicrophoneAccess } from '@/utils/microphone'
 
 onMounted(() => {
-  checkMicrophone()
+  void checkMicrophoneAccess()
 })
 </script>

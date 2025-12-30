@@ -110,10 +110,11 @@
 import { LeftOutlined, CloudUploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { reactive, computed, ref, onMounted } from 'vue'
-import { useCloned } from '@vueuse/core'
 import router from '@/router'
 import MicRecorder from 'mic-recorder-to-mp3'
 import CommonModal from '@/components/CommonModal.vue'
+import { checkMicrophoneAccess } from '@/utils/microphone'
+import { useUnsavedWarning } from '@/composables/useUnsavedWarning'
 type ScriptItem = {
   id: number
   title: string
@@ -135,12 +136,9 @@ const playingItemId = ref<number | null>(null)
 const currentAudio = ref<HTMLAudioElement | null>(null)
 const recorder = new MicRecorder({ bitRate: 128 })
 const modalOpen = ref(false)
-const leaveModalOpen = ref(false)
-const leaveTitle = ref('錄音尚未完成')
-const leaveContent = ref('你已修改錄音資料，離開將不會保存。是否仍要離開？')
 const reRecordModalOpen = ref(false)
 const reRecordTitle = ref('此題已有錄音')
-const reRecordContent = ref('此題已有錄音內容，是否要重新錄音？')
+const reRecordContent = ref('此題已有錄音內容或是被跳過，是否要重新錄音？')
 const pendingReRecordItem = ref<ScriptItem | null>(null)
 // 模擬文稿數據
 const scripts = reactive<ScriptItem[]>([
@@ -206,45 +204,28 @@ const getStatusStyle = computed(() => {
   }
 })
 
-const buildSnapshot = () => {
-  return scripts.map(item => ({
+const buildSnapshot = () =>
+  scripts.map(item => ({
     id: item.id,
     recordStatus: item.recordStatus ?? 0,
     hasAudio: !!item.audioBlob
   }))
-}
 
-const { cloned: initialSnapshot, sync: syncSnapshot } = useCloned(buildSnapshot, {
-  manual: true,
-  deep: true
-})
-
-const isDirty = computed(() => {
-  return JSON.stringify(buildSnapshot()) !== JSON.stringify(initialSnapshot.value)
+const {
+  modalOpen: leaveModalOpen,
+  modalTitle: leaveTitle,
+  modalContent: leaveContent,
+  confirmLeave,
+  cancelLeave,
+  requestLeave,
+  syncSnapshot
+} = useUnsavedWarning(buildSnapshot, {
+  title: '錄音尚未完成',
+  content: '你已修改錄音資料，離開將不會保存。是否仍要離開？'
 })
 
 const backToList = () => {
-  if (isDirty.value) {
-    leaveModalOpen.value = true
-    return
-  }
-  router.push('/recordingList')
-}
-
-const checkMicrophoneReady = async () => {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    return false
-  }
-  if (!window.isSecureContext) {
-    return false
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    stream.getTracks().forEach(track => track.stop())
-    return true
-  } catch (_error: unknown) {
-    return false
-  }
+  requestLeave('/recordingList')
 }
 
 const startRecording = async (item: ScriptItem) => {
@@ -322,7 +303,7 @@ const handleUpload = () => {
 }
 
 const beginRecording = async (item: ScriptItem) => {
-  const isReady = await checkMicrophoneReady()
+  const isReady = await checkMicrophoneAccess()
   if (!isReady) return
   if (activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1) {
     try {
@@ -359,13 +340,6 @@ const cancelReRecord = () => {
   pendingReRecordItem.value = null
 }
 
-const confirmLeave = () => {
-  router.push('/recordingList')
-}
-
-const cancelLeave = () => {
-  leaveModalOpen.value = false
-}
 
 // 3. 切換狀態的邏輯
 const recording = async (item: ScriptItem) => {

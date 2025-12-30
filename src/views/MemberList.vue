@@ -27,7 +27,6 @@
             </template>
           </a-table>
         </div>
-        <div class="mt-auto pt-8 text-center text-gray-400 text-xs tracking-widest">© 2025 MLI Financial Group. All Rights Reserved.</div>
       </div>
     </div>
   </div>

@@ -31,8 +31,15 @@
         </li>
       </ul>
     </nav>
-    <div class="p-4 text-white/40 text-[10px] text-center italic">
-      MLI Recording System
+    <div class="p-4 flex flex-col gap-3">
+      <a-button
+        type="text"
+        class="!text-white !border-white/60 !border !rounded-md hover:!text-white hover:!border-white"
+        @click="handleLogout"
+      >
+        登出
+      </a-button>
+      <div class="text-white/40 text-[10px] text-center italic">MLI Recording System</div>
     </div>
   </div>
 </template>
@@ -43,4 +50,9 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 const activeKey = computed(() => route.name)
+
+const handleLogout = () => {
+  localStorage.removeItem('user_token')
+  router.push({ name: 'login' })
+}
 </script>
