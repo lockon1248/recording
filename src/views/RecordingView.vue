@@ -30,22 +30,36 @@
                 <div class="text-gray-500 font-bold mb-2">{{ item.id }}</div>
                 <a-button class="recording-btn group" :disabled="isRecordingDisabled(item)" @click="recording(item)">
                   <div class="flex items-center">
-                    <span
+                    <i-material-symbols:radio-button-checked
                       :class="[
-                        'w-3 h-3 rounded-full mr-2 transition-colors duration-300',
-                        getStatusStyle(item.recordStatus).color,
-                        getStatusStyle(item.recordStatus).pulse ? 'animate-pulse' : ''
+                        getStatusStyle(item).color,
+                        getStatusStyle(item).pulse ? 'animate-pulse' : ''
                       ]"
-                    ></span>
+                    />
                     <span class="font-bold text-gray-700">
-                      {{ getStatusStyle(item.recordStatus).text }}
+                      {{ getStatusStyle(item).text }}
                     </span>
                   </div>
                 </a-button>
-                <a-button class="play-btn" :disabled="!item.audioUrl" @click="playRecording(item)">
-                  <span :class="item.audioUrl ? 'text-gray-900' : 'text-gray-400'" class="font-bold">
-                    聽取錄音內容
-                  </span>
+                <a-button class="play-btn" :disabled="isPlayDisabled(item)" @click="playRecording(item)">
+                  <div class="flex items-center">
+                    <i-material-symbols:pause v-if="playingItemId === item.id" class="text-red-500" />
+                    <i-material-symbols:play-arrow v-else class="text-green" />
+                    <span :class="item.audioUrl ? 'text-gray-900' : 'text-gray-400'" class="font-bold">
+                      聽取錄音內容
+                    </span>
+                  </div>
+                </a-button>
+                <a-button
+                  v-if="item.showSkip"
+                  class="play-btn"
+                  :disabled="item.recordStatus === 2"
+                  @click="skipRecording(item)"
+                >
+                  <div class="flex items-center">
+                    <i-material-symbols:lock-sharp class="text-yellow-400" />
+                    <span class="text-gray-700 font-bold">此題已跳過</span>
+                  </div>
                 </a-button>
               </div>
             </td>
@@ -69,23 +83,47 @@
       </table>
     </div>
     <CommonModal v-model:open="modalOpen" :title="modalTitle" :content="modalContent" ok-text="我知道了" />
+    <CommonModal
+      v-model:open="leaveModalOpen"
+      :title="leaveTitle"
+      :content="leaveContent"
+      ok-text="離開"
+      cancel-text="留在此頁"
+      :show-cancel="true"
+      @ok="confirmLeave"
+      @cancel="cancelLeave"
+    />
+    <CommonModal
+      v-model:open="reRecordModalOpen"
+      :title="reRecordTitle"
+      :content="reRecordContent"
+      ok-text="是的，重錄"
+      cancel-text="取消"
+      :show-cancel="true"
+      @ok="confirmReRecord"
+      @cancel="cancelReRecord"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { LeftOutlined, CloudUploadOutlined } from '@ant-design/icons-vue'
-import { reactive, computed, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { reactive, computed, ref, onMounted } from 'vue'
+import { useCloned } from '@vueuse/core'
 import router from '@/router'
 import MicRecorder from 'mic-recorder-to-mp3'
 import CommonModal from '@/components/CommonModal.vue'
 type ScriptItem = {
   id: number
   title: string
+  actionLabel?: string
   member: string
   content: string
   note: string
   customer: string
   order: string
+  showSkip?: boolean
   recordStatus?: number
   audioBlob?: Blob
   audioUrl?: string
@@ -93,13 +131,23 @@ type ScriptItem = {
 const modalTitle = ref('')
 const modalContent = ref('')
 const activeItem = ref<ScriptItem | null>(null)
+const playingItemId = ref<number | null>(null)
+const currentAudio = ref<HTMLAudioElement | null>(null)
 const recorder = new MicRecorder({ bitRate: 128 })
 const modalOpen = ref(false)
+const leaveModalOpen = ref(false)
+const leaveTitle = ref('錄音尚未完成')
+const leaveContent = ref('你已修改錄音資料，離開將不會保存。是否仍要離開？')
+const reRecordModalOpen = ref(false)
+const reRecordTitle = ref('此題已有錄音')
+const reRecordContent = ref('此題已有錄音內容，是否要重新錄音？')
+const pendingReRecordItem = ref<ScriptItem | null>(null)
 // 模擬文稿數據
 const scripts = reactive<ScriptItem[]>([
   {
     id: 1,
     title: '開始錄音',
+    actionLabel: '開始錄音',
     member: '業務員',
     content: `測O音先生，您好！我是服務於三商美邦人壽的林O芬，業務員登入字號是0105308576，並已獲得授權招攬。根據法律規定，我將以錄音方式紀錄本次銷售過程。請問您是否同意？`,
     note: '(請依錄音對象唸出客戶姓名，若客戶不同意，則本次銷售過程終止;如為共同承攬件，兩名業務員所屬公司、姓名、登錄字號均須告知。)',
@@ -110,41 +158,35 @@ const scripts = reactive<ScriptItem[]>([
   {
     id: 2,
     title: '播稿並錄音',
+    actionLabel: '播稿並錄音',
     member: '業務員',
-    content: `您所購買的是三商美邦人壽發行的投資型保險商品...`,
+    content: `您所購買的是三商美邦人壽發行的投資型保險商品-金世紀副利變額萬能壽險Ａ型。以下將說明本商品內容及重要事項，請您聽完後逐一回答`,
     note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
     customer: '客戶',
     order: '同意 / 不同意',
     recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
   },
   {
-    id: 2,
+    id: 3,
     title: '播稿並錄音',
+    actionLabel: '播稿並錄音',
     member: '業務員',
-    content: `您所購買的是三商美邦人壽發行的投資型保險商品...`,
-    note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
+    content: `本保險「投資標的」是可以轉換的，請問需要為您說明【投資標的轉換】條款內容嗎？`,
+    note: '(若客戶回答「需要」時，須說明以下《》內容',
     customer: '客戶',
-    order: '同意 / 不同意',
+    order: '需要 / 不需要',
     recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
   },
   {
-    id: 2,
+    id: 4,
     title: '播稿並錄音',
+    actionLabel: '播稿並錄音',
     member: '業務員',
-    content: `您所購買的是三商美邦人壽發行的投資型保險商品...`,
-    note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
+    content: `22-1. 有關【投資標的轉換】提供以下轉換方式：1. 停利機制為所持有之投資標的報酬率達到您所設定之停利點時，將全數金額轉出至您所指定之投資標的，若未指定則轉出至「停泊標的」。 2. 申請轉換為設定將持有之「一般投資標的」或「停泊標的」轉出至所指定之「一般投資標的」。 22-2. 以上說明，請問您清楚嗎？`,
+    note: '',
     customer: '客戶',
-    order: '同意 / 不同意',
-    recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
-  },
-  {
-    id: 2,
-    title: '播稿並錄音',
-    member: '業務員',
-    content: `您所購買的是三商美邦人壽發行的投資型保險商品...`,
-    note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
-    customer: '客戶',
-    order: '同意 / 不同意',
+    order: '清楚 / 不清楚',
+    showSkip: true,
     recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
   }
 ])
@@ -152,19 +194,40 @@ const scripts = reactive<ScriptItem[]>([
 // 2. 使用 computed 控制樣式邏輯
 // 這裡我們回傳一個閉包函式，讓 template 可以根據 status 取得對應設定
 const getStatusStyle = computed(() => {
-  return (status: number | undefined) => {
-    switch (status) {
+  return (item: ScriptItem) => {
+    switch (item.recordStatus) {
       case 1:
-        return { text: '錄音結束', color: 'bg-green-500', pulse: true }
+        return { text: '錄音結束', color: 'text-green-500', pulse: true }
       case 2:
-        return { text: '重新錄音', color: 'bg-black', pulse: false }
+        return { text: '重新錄音', color: 'text-black', pulse: false }
       default:
-        return { text: '開始錄音', color: 'bg-red-500', pulse: false }
+        return { text: item.actionLabel || '開始錄音', color: 'text-red-500', pulse: false }
     }
   }
 })
 
+const buildSnapshot = () => {
+  return scripts.map(item => ({
+    id: item.id,
+    recordStatus: item.recordStatus ?? 0,
+    hasAudio: !!item.audioBlob
+  }))
+}
+
+const { cloned: initialSnapshot, sync: syncSnapshot } = useCloned(buildSnapshot, {
+  manual: true,
+  deep: true
+})
+
+const isDirty = computed(() => {
+  return JSON.stringify(buildSnapshot()) !== JSON.stringify(initialSnapshot.value)
+})
+
 const backToList = () => {
+  if (isDirty.value) {
+    leaveModalOpen.value = true
+    return
+  }
   router.push('/recordingList')
 }
 
@@ -205,11 +268,35 @@ const stopRecording = async (item: ScriptItem) => {
 
 const playRecording = (item: ScriptItem) => {
   if (!item.audioUrl) return
+  if (playingItemId.value === item.id && currentAudio.value) {
+    currentAudio.value.pause()
+    currentAudio.value.currentTime = 0
+    currentAudio.value = null
+    playingItemId.value = null
+    return
+  }
+  if (currentAudio.value) {
+    currentAudio.value.pause()
+    currentAudio.value.currentTime = 0
+  }
   const audio = new Audio(item.audioUrl)
+  currentAudio.value = audio
+  playingItemId.value = item.id
+  audio.onended = () => {
+    currentAudio.value = null
+    playingItemId.value = null
+  }
   audio.play()
 }
 
+const isPlayDisabled = (item: ScriptItem) => {
+  if (!item.audioUrl) return true
+  if (playingItemId.value && playingItemId.value !== item.id) return true
+  return false
+}
+
 const isRecordingDisabled = (item: ScriptItem) => {
+  if (playingItemId.value) return true
   return !!activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1
 }
 
@@ -226,16 +313,63 @@ const handleUpload = () => {
     showModal('尚有錄音未完成', `以下項目尚未完成錄音：${missingList}\n請先完成錄音再上傳。`)
     return
   }
-  console.log(
-    '準備上傳錄音',
-    scripts.map(item => item.audioBlob)
-  )
+  const messageKey = 'uploadRecording'
+  message.loading({ content: '錄音上傳中...', key: messageKey, duration: 0 })
+  setTimeout(() => {
+    message.success({ content: '上傳完成', key: messageKey, duration: 1 })
+    router.push('/recordingList')
+  }, 1200)
+}
+
+const beginRecording = async (item: ScriptItem) => {
+  const isReady = await checkMicrophoneReady()
+  if (!isReady) return
+  if (activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1) {
+    try {
+      await stopRecording(activeItem.value)
+    } catch (_error: unknown) {
+      activeItem.value.recordStatus = 0
+    }
+  }
+  try {
+    await startRecording(item)
+  } catch (_error: unknown) {
+    item.recordStatus = 0
+    activeItem.value = null
+  }
+}
+
+const skipRecording = (item: ScriptItem) => {
+  item.recordStatus = 2
+  if (!item.audioBlob) {
+    item.audioBlob = new Blob([], { type: 'audio/mp3' })
+  }
+}
+
+const confirmReRecord = async () => {
+  const item = pendingReRecordItem.value
+  reRecordModalOpen.value = false
+  pendingReRecordItem.value = null
+  if (!item) return
+  await beginRecording(item)
+}
+
+const cancelReRecord = () => {
+  reRecordModalOpen.value = false
+  pendingReRecordItem.value = null
+}
+
+const confirmLeave = () => {
+  router.push('/recordingList')
+}
+
+const cancelLeave = () => {
+  leaveModalOpen.value = false
 }
 
 // 3. 切換狀態的邏輯
 const recording = async (item: ScriptItem) => {
-  const isReady = await checkMicrophoneReady()
-  if (!isReady) return
+  // TODO: 播稿並錄音需先播放既有稿件音檔，再開始錄音
   // 同一筆已在錄音中：這次點擊視為「停止」
   if (item.recordStatus === 1 && activeItem.value === item) {
     try {
@@ -246,22 +380,18 @@ const recording = async (item: ScriptItem) => {
     }
     return
   }
-  // 另一筆在錄音中：先停止前一筆，再切換到新的
-  if (activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1) {
-    try {
-      await stopRecording(activeItem.value)
-    } catch (_error: unknown) {
-      activeItem.value.recordStatus = 0
-    }
+  // 已錄音：提示是否重錄
+  if (item.recordStatus === 2) {
+    pendingReRecordItem.value = item
+    reRecordModalOpen.value = true
+    return
   }
-  // 開始或重新開始錄音
-  try {
-    await startRecording(item)
-  } catch (_error: unknown) {
-    item.recordStatus = 0
-    activeItem.value = null
-  }
+  await beginRecording(item)
 }
+
+onMounted(() => {
+  syncSnapshot()
+})
 </script>
 
 <style scoped>

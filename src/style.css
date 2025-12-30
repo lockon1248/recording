@@ -42,3 +42,16 @@ a {
   text-decoration: none;
   color: inherit;
 }
+
+/* 8. 統一 disabled 按鈕為灰階 */
+.ant-btn[disabled],
+.ant-btn-disabled {
+  background-color: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  color: #9ca3af !important;
+}
+
+.ant-btn[disabled] *,
+.ant-btn-disabled * {
+  color: #9ca3af !important;
+}
