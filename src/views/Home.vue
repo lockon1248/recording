@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen w-screen flex items-stretch overflow-hidden">
+  <div class="h-full w-screen flex items-stretch overflow-hidden">
     <div class="w-[200px] flex-shrink-0">
       <sidebar class="h-full" />
     </div>

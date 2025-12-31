@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full w-full bg-[#F58220] flex flex-col shadow-lg overflow-hidden">
+  <div class="h-full w-full bg-[#F58220] flex flex-col shadow-lg overflow-hidden relative z-20">
     <div class="p-6 border-b border-white/20">
       <div class="text-white font-bold text-lg tracking-widest">功能選單</div>
     </div>

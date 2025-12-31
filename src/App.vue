@@ -1,10 +1,10 @@
 <template>
   <a-config-provider :theme="themeConfig" :locale="zhTW">
     <div class="h-screen w-screen flex flex-col overflow-hidden">
-      <div class="flex-1 overflow-auto pb-12">
+      <div class="flex-1 overflow-auto">
         <router-view />
       </div>
-      <div class="fixed bottom-4 w-full pointer-events-none">
+      <div class="fixed bottom-4 right-0 w-[calc(100%-200px)] pointer-events-none z-10">
         <AppFooter />
       </div>
     </div>

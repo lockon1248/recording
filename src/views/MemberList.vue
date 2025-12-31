@@ -1,22 +1,31 @@
 <template>
-  <div class="h-screen w-screen flex items-stretch overflow-hidden bg-gray-50">
-    <div class="w-[200px] flex-shrink-0 border-r border-gray-200">
-      <sidebar class="h-full" />
+  <div class="h-full w-screen flex items-stretch overflow-hidden bg-gray-50">
+    <div class="w-[200px] flex-shrink-0 border-r border-gray-200 relative">
+      <sidebar class="h-full absolute" />
     </div>
     <div class="flex-[5] flex flex-col min-w-0 overflow-hidden">
-      <div class="flex-1 flex flex-col p-8 overflow-auto">
-        <div class="mb-8 flex justify-between items-end">
+      <div class="flex-1 flex flex-col p-8 overflow-auto gap-3">
+        <div class="mb-4 flex justify-between items-end">
           <div>
             <h1 class="text-2xl font-bold text-gray-800 mb-2">人員權限設定</h1>
             <p class="text-gray-500">管理系統使用者之存取權限與帳號狀態</p>
           </div>
-          <div class="flex items-center gap-4">
-            <a-input-search v-model:value="searchQuery" placeholder="搜尋員編、姓名或部門" style="width: 320px" />
-            <a-button @click="toMemberForm()" type="primary" class="!bg-[#F58220] !border-[#F58220]"> 新增人員 </a-button>
+        </div>
+        <div class="flex gap-4 justify-between">
+          <div class="flex items-center gap-2">
+            <a-input-search v-model:value="searchEmpId" placeholder="搜尋員編" style="width: 250px" />
+            <a-input-search v-model:value="searchName" placeholder="搜尋姓名" style="width: 250px" />
+            <a-input-search v-model:value="searchDept" placeholder="搜尋部門" style="width: 250px" />
           </div>
+          <a-button @click="toMemberForm()" type="primary" class="!bg-[#F58220] !border-[#F58220]"> 新增人員 </a-button>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <a-table :columns="columns" :data-source="filteredStaffData" :pagination="{ pageSize: 10 }" :scroll="{ x: 'max-content' }">
+          <a-table
+            :columns="columns"
+            :data-source="filteredStaffData"
+            :pagination="{ pageSize: 10 }"
+            :scroll="{ x: 'max-content' }"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
                 <a-badge :status="record.status === '啟用' ? 'success' : 'default'" :text="record.status" />
@@ -38,7 +47,9 @@ import { useMemberStore, type Member } from '@/stores/member'
 import router from '@/router'
 import Sidebar from '@/components/Sidebar.vue'
 const memberStore = useMemberStore()
-const searchQuery = ref('')
+const searchEmpId = ref('')
+const searchName = ref('')
+const searchDept = ref('')
 // 定義表格欄位
 const columns = [
   { title: '員工編號', dataIndex: 'empId', key: 'empId' },
@@ -50,15 +61,15 @@ const columns = [
 ]
 
 const filteredStaffData = computed(() => {
-  const keyword = searchQuery.value.trim().toLowerCase()
-  if (!keyword) return memberStore.members
+  const empIdKeyword = searchEmpId.value.trim().toLowerCase()
+  const nameKeyword = searchName.value.trim().toLowerCase()
+  const deptKeyword = searchDept.value.trim().toLowerCase()
+  if (!empIdKeyword && !nameKeyword && !deptKeyword) return memberStore.members
   return memberStore.members.filter(item => {
-    return (
-      item.empId.toLowerCase().includes(keyword) ||
-      item.name.toLowerCase().includes(keyword) ||
-      item.dept.toLowerCase().includes(keyword) ||
-      item.role.toLowerCase().includes(keyword)
-    )
+    if (empIdKeyword && !item.empId.toLowerCase().includes(empIdKeyword)) return false
+    if (nameKeyword && !item.name.toLowerCase().includes(nameKeyword)) return false
+    if (deptKeyword && !item.dept.toLowerCase().includes(deptKeyword)) return false
+    return true
   })
 })
 
@@ -77,7 +88,6 @@ const toMemberForm = (record?: Member) => {
   memberStore.setSelectedMemberId(null)
   router.push({ name: 'memberForm', query: { mode: 'add' } })
 }
-
 </script>
 
 <style scoped>

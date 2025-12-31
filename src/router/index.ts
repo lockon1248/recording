@@ -18,34 +18,41 @@ const routes = [
     path: '/recordingList',
     name: 'recordingList',
     component: () => import('@/views/RecordingList.vue'),
-    meta: { title: '首頁 - 三商美邦' }
+    meta: { title: '三商美邦-錄音列表' }
   },
   {
-    path: '/recordingView',
-    name: 'recording',
-    component: () => import('@/views/RecordingView.vue'),
-    meta: { title: '三商美邦-錄音' }
+    path: '/RecordingCompiler/:id?',
+    name: 'recordingCompiler',
+    component: () => import('@/views/RecordingCompiler.vue'),
+    meta: { title: '三商美邦-編輯錄音' }
   },
   {
     path: '/memberList',
     name: 'memberList',
     component: () => import('@/views/MemberList.vue'),
-    meta: { title: '三商美邦-人員管理' }
+    meta: { title: '三商美邦-人員管理清單' }
   },
   {
     path: '/memberForm/:id?',
     name: 'memberForm',
     component: () => import('@/views/MemberForm.vue'),
-    meta: { title: '三商美邦-人員管理' }
+    meta: { title: '三商美邦-新增或編輯人員' }
+  },
+  {
+    path: '/recordingView/:id?',
+    name: 'recordingView',
+    component: () => import('@/views/RecordingView.vue'),
+    meta: { title: '三商美邦-錄音照會' }
   }
 ]
 const router = createRouter({
-    history: createWebHistory(import.meta.env.BASE_URL),
-    routes,
-    // 切換頁面時，自動滾動到頂部
-    // scrollBehavior() {
-    //     return { top: 0 }
-    // }
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes,
+
+  // 切換頁面時，自動滾動到頂部
+  // scrollBehavior() {
+  //     return { top: 0 }
+  // }
 })
 
 // 路由守衛：自動根據 meta 設定網頁標題
