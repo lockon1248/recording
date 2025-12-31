@@ -141,6 +141,7 @@ const activeItem = ref<ScriptItem | null>(null)
 const playingItemId = ref<number | null>(null)
 const currentAudio = ref<HTMLAudioElement | null>(null)
 const scriptAudio = ref<HTMLAudioElement | null>(null)
+const scriptPlayingItemId = ref<number | null>(null)
 const recorder = new MicRecorder({ bitRate: 128 })
 const modalOpen = ref(false)
 const reRecordModalOpen = ref(false)
@@ -265,15 +266,22 @@ const startRecording = async (item: ScriptItem) => {
 }
 
 const stopRecording = async (item: ScriptItem) => {
-  const [, blob] = await recorder.stop().getMp3()
-  item.audioBlob = blob
-  item.audioUrl = URL.createObjectURL(blob)
+  const [, recordedBlob] = await recorder.stop().getMp3()
+  if (item.scriptAudioUrl) {
+    const combinedBlob = await concatScriptAndRecording(item.scriptAudioUrl, recordedBlob)
+    item.audioBlob = combinedBlob
+    item.audioUrl = URL.createObjectURL(combinedBlob)
+  } else {
+    item.audioBlob = recordedBlob
+    item.audioUrl = URL.createObjectURL(recordedBlob)
+  }
   item.recordStatus = 2
   activeItem.value = null
 }
 
 const playRecording = (item: ScriptItem) => {
   if (!item.audioUrl) return
+  stopScriptPlayback()
   if (playingItemId.value === item.id && currentAudio.value) {
     currentAudio.value.pause()
     currentAudio.value.currentTime = 0
@@ -303,20 +311,105 @@ const stopListeningPlayback = () => {
   playingItemId.value = null
 }
 
-const playScriptAudio = (item: ScriptItem) => {
-  if (!item.scriptAudioUrl) return
-  if (scriptAudio.value) {
-    scriptAudio.value.pause()
-    scriptAudio.value.currentTime = 0
+const stopScriptPlayback = () => {
+  if (!scriptAudio.value) return
+  scriptAudio.value.pause()
+  scriptAudio.value.currentTime = 0
+  scriptAudio.value = null
+  scriptPlayingItemId.value = null
+}
+
+const concatScriptAndRecording = async (scriptUrl: string, recordedBlob: Blob) => {
+  const audioContext = new AudioContext()
+  const decode = async (buffer: ArrayBuffer) => audioContext.decodeAudioData(buffer)
+  const resample = async (buffer: AudioBuffer, targetRate: number) => {
+    if (buffer.sampleRate === targetRate) return buffer
+    const offline = new OfflineAudioContext(buffer.numberOfChannels, Math.ceil(buffer.duration * targetRate), targetRate)
+    const source = offline.createBufferSource()
+    source.buffer = buffer
+    source.connect(offline.destination)
+    source.start()
+    return offline.startRendering()
   }
-  const audio = new Audio(item.scriptAudioUrl)
-  scriptAudio.value = audio
-  audio.onended = () => {
-    if (scriptAudio.value === audio) {
-      scriptAudio.value = null
+  const encodeWav = (buffer: AudioBuffer) => {
+    const numChannels = buffer.numberOfChannels
+    const sampleRate = buffer.sampleRate
+    const length = buffer.length * numChannels * 2 + 44
+    const arrayBuffer = new ArrayBuffer(length)
+    const view = new DataView(arrayBuffer)
+    let offset = 0
+    const writeString = (str: string) => {
+      for (let i = 0; i < str.length; i += 1) {
+        view.setUint8(offset, str.charCodeAt(i))
+        offset += 1
+      }
     }
+    writeString('RIFF')
+    view.setUint32(offset, length - 8, true)
+    offset += 4
+    writeString('WAVE')
+    writeString('fmt ')
+    view.setUint32(offset, 16, true)
+    offset += 4
+    view.setUint16(offset, 1, true)
+    offset += 2
+    view.setUint16(offset, numChannels, true)
+    offset += 2
+    view.setUint32(offset, sampleRate, true)
+    offset += 4
+    view.setUint32(offset, sampleRate * numChannels * 2, true)
+    offset += 4
+    view.setUint16(offset, numChannels * 2, true)
+    offset += 2
+    view.setUint16(offset, 16, true)
+    offset += 2
+    writeString('data')
+    view.setUint32(offset, length - 44, true)
+    offset += 4
+    const channels = []
+    for (let i = 0; i < numChannels; i += 1) {
+      channels.push(buffer.getChannelData(i))
+    }
+    for (let i = 0; i < buffer.length; i += 1) {
+      for (let ch = 0; ch < numChannels; ch += 1) {
+        const channel = channels[ch] || channels[0]
+        let sample = channel?.[i] ?? 0
+        sample = Math.max(-1, Math.min(1, sample))
+        view.setInt16(offset, sample * 0x7fff, true)
+        offset += 2
+      }
+    }
+    return new Blob([view], { type: 'audio/wav' })
   }
-  audio.play()
+  try {
+    const [scriptBuffer, recordedBuffer] = await Promise.all([
+      fetch(scriptUrl).then(res => res.arrayBuffer()),
+      recordedBlob.arrayBuffer()
+    ])
+    const scriptAudio = await decode(scriptBuffer)
+    const recordedAudio = await decode(recordedBuffer)
+    const targetRate = scriptAudio.sampleRate
+    const scriptResampled = await resample(scriptAudio, targetRate)
+    const recordedResampled = await resample(recordedAudio, targetRate)
+    const channels = Math.max(scriptResampled.numberOfChannels, recordedResampled.numberOfChannels)
+    const combined = audioContext.createBuffer(
+      channels,
+      scriptResampled.length + recordedResampled.length,
+      targetRate
+    )
+    for (let ch = 0; ch < channels; ch += 1) {
+      const channelData = combined.getChannelData(ch)
+      const scriptData = scriptResampled.getChannelData(Math.min(ch, scriptResampled.numberOfChannels - 1))
+      const recordedData = recordedResampled.getChannelData(Math.min(ch, recordedResampled.numberOfChannels - 1))
+      channelData.set(scriptData, 0)
+      channelData.set(recordedData, scriptResampled.length)
+    }
+    return encodeWav(combined)
+  } catch (_error: unknown) {
+    return recordedBlob
+  } finally {
+    audioContext.close()
+  }
 }
 
 const isPlayDisabled = (item: ScriptItem) => {
@@ -326,7 +419,7 @@ const isPlayDisabled = (item: ScriptItem) => {
 }
 
 const isRecordingDisabled = (item: ScriptItem) => {
-  if (playingItemId.value) return true
+  if (playingItemId.value || scriptPlayingItemId.value) return true
   return !!activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1
 }
 
@@ -356,6 +449,7 @@ const beginRecording = async (item: ScriptItem) => {
   const isReady = await checkMicrophoneAccess()
   if (!isReady) return
   stopListeningPlayback()
+  stopScriptPlayback()
   if (activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1) {
     try {
       await stopRecording(activeItem.value)
@@ -365,11 +459,37 @@ const beginRecording = async (item: ScriptItem) => {
   }
   try {
     await startRecording(item)
-    playScriptAudio(item)
   } catch (_error: unknown) {
     item.recordStatus = 0
     activeItem.value = null
   }
+}
+
+const playScriptThenRecord = async (item: ScriptItem) => {
+  if (props.readonly || !item.scriptAudioUrl) return
+  if (scriptPlayingItemId.value === item.id) return
+  const isReady = await checkMicrophoneAccess()
+  if (!isReady) return
+  stopListeningPlayback()
+  stopScriptPlayback()
+  if (activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1) {
+    try {
+      await stopRecording(activeItem.value)
+    } catch (_error: unknown) {
+      activeItem.value.recordStatus = 0
+    }
+  }
+  scriptPlayingItemId.value = item.id
+  const audio = new Audio(item.scriptAudioUrl)
+  scriptAudio.value = audio
+  audio.onended = async () => {
+    if (scriptAudio.value === audio) {
+      scriptAudio.value = null
+    }
+    scriptPlayingItemId.value = null
+    await beginRecording(item)
+  }
+  audio.play()
 }
 
 const skipRecording = (item: ScriptItem) => {
@@ -407,10 +527,15 @@ const recording = async (item: ScriptItem) => {
     }
     return
   }
+  if (scriptPlayingItemId.value === item.id) return
   // 已錄音：提示是否重錄
   if (item.recordStatus === 2) {
     pendingReRecordItem.value = item
     reRecordModalOpen.value = true
+    return
+  }
+  if (item.scriptAudioUrl) {
+    await playScriptThenRecord(item)
     return
   }
   await beginRecording(item)
