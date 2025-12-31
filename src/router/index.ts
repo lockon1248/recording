@@ -23,7 +23,8 @@ const routes = [
   {
     path: '/RecordingCompiler/:id?',
     name: 'recordingCompiler',
-    component: () => import('@/views/RecordingCompiler.vue'),
+    component: () => import('@/views/RecordingView.vue'),
+    props: { readonly: false },
     meta: { title: '三商美邦-編輯錄音' }
   },
   {
@@ -42,6 +43,7 @@ const routes = [
     path: '/recordingView/:id?',
     name: 'recordingView',
     component: () => import('@/views/RecordingView.vue'),
+    props: { readonly: true },
     meta: { title: '三商美邦-錄音照會' }
   }
 ]

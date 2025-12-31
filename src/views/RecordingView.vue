@@ -5,7 +5,11 @@
         <template #icon><LeftOutlined /></template> Back
       </a-button>
       <div class="flex-1 text-center font-bold text-lg">錄音文稿內容</div>
-      <a-button class="!rounded-full !flex items-center shadow-sm border-gray-200" @click="handleUpload">
+      <a-button
+        v-if="!readonly"
+        class="!rounded-full !flex items-center shadow-sm border-gray-200"
+        @click="handleUpload"
+      >
         <template #icon><CloudUploadOutlined class="text-orange-500" /></template>
         錄音上傳
       </a-button>
@@ -28,7 +32,12 @@
             <td class="w-48 align-top p-6" :class="item.recordStatus === 2 ? 'bg-gray-200' : 'bg-[#FFF7ED]'">
               <div class="flex flex-col items-center gap-4">
                 <div class="text-gray-500 font-bold mb-2">{{ item.id }}</div>
-                <a-button class="recording-btn group" :disabled="isRecordingDisabled(item)" @click="recording(item)">
+                <a-button
+                  v-if="!readonly"
+                  class="recording-btn group"
+                  :disabled="isRecordingDisabled(item)"
+                  @click="recording(item)"
+                >
                   <div class="flex items-center">
                     <i-material-symbols:radio-button-checked
                       :class="[getStatusStyle(item).color, getStatusStyle(item).pulse ? 'animate-pulse' : '']"
@@ -46,7 +55,7 @@
                   </div>
                 </a-button>
                 <a-button
-                  v-if="item.showSkip"
+                  v-if="!readonly && item.showSkip"
                   class="play-btn"
                   :disabled="item.recordStatus === 2"
                   @click="skipRecording(item)"
@@ -125,6 +134,7 @@ type ScriptItem = {
   audioBlob?: Blob
   audioUrl?: string
 }
+const props = withDefaults(defineProps<{ readonly?: boolean }>(), { readonly: false })
 const modalTitle = ref('')
 const modalContent = ref('')
 const activeItem = ref<ScriptItem | null>(null)
@@ -342,6 +352,7 @@ const handleUpload = () => {
 }
 
 const beginRecording = async (item: ScriptItem) => {
+  if (props.readonly) return
   const isReady = await checkMicrophoneAccess()
   if (!isReady) return
   stopListeningPlayback()
@@ -362,6 +373,7 @@ const beginRecording = async (item: ScriptItem) => {
 }
 
 const skipRecording = (item: ScriptItem) => {
+  if (props.readonly) return
   item.recordStatus = 2
   if (!item.audioBlob) {
     item.audioBlob = new Blob([], { type: 'audio/mp3' })
@@ -383,6 +395,7 @@ const cancelReRecord = () => {
 
 // 3. 切換狀態的邏輯
 const recording = async (item: ScriptItem) => {
+  if (props.readonly) return
   // TODO: 播稿並錄音需先播放既有稿件音檔，再開始錄音
   // 同一筆已在錄音中：這次點擊視為「停止」
   if (item.recordStatus === 1 && activeItem.value === item) {
