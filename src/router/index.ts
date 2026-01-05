@@ -25,7 +25,7 @@ const routes = [
     name: 'recording',
     component: () => import('@/views/RecordingView.vue'),
     props: { readonly: false },
-    meta: { title: '三商美邦-編輯錄音' }
+    meta: { title: '三商美邦-錄音' }
   },
   {
     path: '/memberList',
@@ -50,7 +50,7 @@ const routes = [
     path: '/recordingCompiler/:id?',
     name: 'recordingCompiler',
     component: () => import('@/views/RecordingCompiler.vue'),
-    meta: { title: '三商美邦-編輯錄音' }
+    meta: { title: '三商美邦-編輯錄音項目' }
   }
 ]
 const router = createRouter({

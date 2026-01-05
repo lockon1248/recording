@@ -54,6 +54,12 @@
                     <span :class="item.audioUrl ? 'text-gray-900' : 'text-gray-400'" class="font-bold"> 播放 </span>
                   </div>
                 </a-button>
+                <!-- <a-button class="play-btn" :disabled="!item.audioBlob" @click="downloadRecording(item)">
+                  <div class="flex items-center">
+                    <i-material-symbols:download class="text-blue-500" />
+                    <span :class="item.audioBlob ? 'text-gray-900' : 'text-gray-400'" class="font-bold"> 下載 </span>
+                  </div>
+                </a-button> -->
                 <a-button
                   v-if="!readonly && item.showSkip"
                   class="play-btn"
@@ -114,11 +120,13 @@
 import { LeftOutlined, CloudUploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { reactive, computed, ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import router from '@/router'
 import MicRecorder from 'mic-recorder-to-mp3'
 import CommonModal from '@/components/CommonModal.vue'
 import { checkMicrophoneAccess } from '@/utils/microphone'
 import { useUnsavedWarning } from '@/composables/useUnsavedWarning'
+import { loadAudio, saveAudio } from '@/utils/audioStore'
 type ScriptItem = {
   id: number
   title: string
@@ -148,6 +156,8 @@ const reRecordModalOpen = ref(false)
 const reRecordTitle = ref('此題已有錄音')
 const reRecordContent = ref('此題已有錄音內容或是被跳過，是否要重新錄音？')
 const pendingReRecordItem = ref<ScriptItem | null>(null)
+const route = useRoute()
+const caseId = computed(() => (route.params.id as string | undefined) || '')
 // 模擬文稿數據
 const scripts = reactive<ScriptItem[]>([
   {
@@ -247,7 +257,8 @@ const {
   syncSnapshot
 } = useUnsavedWarning(buildSnapshot, {
   title: '錄音尚未完成',
-  content: '你已修改錄音資料，離開將不會保存。是否仍要離開？'
+  content: '你已修改錄音資料，離開將不會保存。是否仍要離開？',
+  enabled: !props.readonly
 })
 
 const backToList = () => {
@@ -274,6 +285,9 @@ const stopRecording = async (item: ScriptItem) => {
   } else {
     item.audioBlob = recordedBlob
     item.audioUrl = URL.createObjectURL(recordedBlob)
+  }
+  if (caseId.value) {
+    await saveAudio(caseId.value, item.id, item.audioBlob)
   }
   item.recordStatus = 2
   activeItem.value = null
@@ -302,6 +316,23 @@ const playRecording = (item: ScriptItem) => {
   }
   audio.play()
 }
+
+// const downloadRecording = (item: ScriptItem) => {
+//   if (!item.audioBlob) {
+//     message.warning('目前沒有可下載的錄音')
+//     return
+//   }
+//   const blobType = item.audioBlob.type || 'audio/wav'
+//   const ext = blobType.includes('wav') ? 'wav' : 'mp3'
+//   const url = URL.createObjectURL(item.audioBlob)
+//   const link = document.createElement('a')
+//   link.href = url
+//   link.download = `recording-${item.id}.${ext}`
+//   document.body.appendChild(link)
+//   link.click()
+//   link.remove()
+//   URL.revokeObjectURL(url)
+// }
 
 const stopListeningPlayback = () => {
   if (!currentAudio.value) return
@@ -543,6 +574,19 @@ const recording = async (item: ScriptItem) => {
 
 onMounted(() => {
   syncSnapshot()
+  if (!caseId.value) return
+  scripts.forEach(async item => {
+    if (item.audioBlob) return
+    try {
+      const record = await loadAudio(caseId.value, item.id)
+      if (!record?.blob) return
+      item.audioBlob = record.blob
+      item.audioUrl = URL.createObjectURL(record.blob)
+      item.recordStatus = 2
+    } catch (_error: unknown) {
+      // ignore load failures
+    }
+  })
 })
 </script>
 

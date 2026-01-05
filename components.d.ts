@@ -29,6 +29,7 @@ declare module 'vue' {
     ATag: typeof import('ant-design-vue/es')['Tag']
     ATextarea: typeof import('ant-design-vue/es')['Textarea']
     CommonModal: typeof import('./src/components/CommonModal.vue')['default']
+    'IMaterialSymbols:download': typeof import('~icons/material-symbols/download')['default']
     'IMaterialSymbols:lockSharp': typeof import('~icons/material-symbols/lock-sharp')['default']
     'IMaterialSymbols:pause': typeof import('~icons/material-symbols/pause')['default']
     'IMaterialSymbols:playArrow': typeof import('~icons/material-symbols/play-arrow')['default']

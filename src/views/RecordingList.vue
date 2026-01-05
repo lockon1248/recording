@@ -139,7 +139,7 @@ const filteredCaseData = computed(() => {
 const handleGo = (type: string, record: RecordingCase) => {
   recordingStore.setSelectedCaseId(record.caseId)
   if (type === 'recording') {
-    router.push({ name: 'recordingView', params: { id: record.caseId } })
+    router.push({ name: 'recording', params: { id: record.caseId } })
   } else if(type==='view') {
     router.push({ name: 'recordingView', params: { id: record.caseId } })
   } else{
