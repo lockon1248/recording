@@ -13,7 +13,7 @@
             <a-input v-model:value="username" placeholder="員編" />
           </a-form-item>
           <a-form-item class="!mb-8">
-            <a-input-password v-model:value="password" placeholder="密碼" />
+            <a-input-password v-model:value="password" placeholder="密碼" autocomplete />
           </a-form-item>
           <a-button type="primary" block @click="handleLogin" class="!h-10 !bg-[#FF9900] !border-[#FF9900] font-bold">
             登 入
@@ -47,7 +47,6 @@ const handleLogin = () => {
     message.error('密碼錯誤')
     return
   }
-
   // 模擬登入
   setTimeout(() => {
     localStorage.setItem('user_token', 'active')

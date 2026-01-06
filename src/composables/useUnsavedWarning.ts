@@ -20,6 +20,7 @@ export const useUnsavedWarning = <T>(source: T | (() => T), options: Options = {
   const isDirty = computed(() => {
     return JSON.stringify(toValue(source)) !== JSON.stringify(snapshot.value)
   })
+
   const requestLeave = (to?: RouteLocationRaw) => {
     if (!enabled) {
       if (to) router.push(to)
@@ -52,6 +53,7 @@ export const useUnsavedWarning = <T>(source: T | (() => T), options: Options = {
     pendingRoute.value = null
     modalOpen.value = false
   }
+  
   if (enabled) {
     onBeforeRouteLeave(to => {
       if (allowLeave.value) {

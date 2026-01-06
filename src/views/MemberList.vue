@@ -89,7 +89,6 @@ const toMemberForm = (record?: Member) => {
   router.push({ name: 'memberForm', query: { mode: 'add' } })
 }
 </script>
-
 <style scoped>
 /* 統一表格表頭樣式 */
 :deep(.ant-table-thead > tr > th) {

@@ -97,15 +97,14 @@
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import Sidebar from '@/components/Sidebar.vue'
 import { useRecordingStore, type RecordingCase } from '@/stores/recording'
-const searchCaseId = ref('')
+import Sidebar from '@/components/Sidebar.vue'
 const searchName = ref('')
 const searchType = ref('')
+const searchCaseId = ref('')
 const router = useRouter()
 const recordingStore = useRecordingStore()
 // 定義表格欄位
@@ -152,7 +151,6 @@ const handleCreate = () => {
   router.push({ name: 'recordingCompiler' })
 }
 </script>
-
 <style scoped>
 /* 微調 Ant Design 表格樣式使其更清爽 */
 :deep(.ant-table-thead > tr > th) {
@@ -160,7 +158,6 @@ const handleCreate = () => {
   color: #003366; /* 三商藍字體 */
   font-weight: bold;
 }
-
 :deep(.ant-table-pagination) {
   padding-right: 20px;
 }

@@ -13,6 +13,14 @@
         <template #icon><CloudUploadOutlined class="text-orange-500" /></template>
         錄音上傳
       </a-button>
+      <a-button
+        v-else
+        class="!rounded-full !flex items-center shadow-sm border-gray-200"
+        @click="handleDownloadAll"
+      >
+        <template #icon><DownloadOutlined class="text-orange-500" /></template>
+        下載錄音
+      </a-button>
     </div>
     <div class="bg-gray-50 px-6 py-4 text-center border-b border-gray-200">
       <span class="font-bold text-gray-700">
@@ -20,77 +28,79 @@
       </span>
     </div>
     <div class="flex-1 overflow-auto">
-      <table class="w-full border-collapse">
-        <thead class="bg-orange-50 sticky top-0 z-10">
-          <tr class="divide-x border-b text-center">
-            <th class="w-48 py-3 text-mliNavy font-bold">題號 / 操作</th>
-            <th class="py-3 text-mliNavy font-bold">錄音文稿內容</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y-1 divide-gray-300">
-          <tr v-for="item in scripts" :key="item.id" :class="{ 'bg-gray-200': item.recordStatus === 2 }">
-            <td class="w-48 align-top p-6" :class="item.recordStatus === 2 ? 'bg-gray-200' : 'bg-[#FFF7ED]'">
-              <div class="flex flex-col items-center gap-4">
-                <div class="text-gray-500 font-bold mb-2">{{ item.id }}</div>
-                <a-button
-                  v-if="!readonly"
-                  class="recording-btn group"
-                  :disabled="isRecordingDisabled(item)"
-                  @click="recording(item)"
-                >
-                  <div class="flex items-center">
-                    <i-material-symbols:radio-button-checked
-                      :class="[getStatusStyle(item).color, getStatusStyle(item).pulse ? 'animate-pulse' : '']"
-                    />
-                    <span class="font-bold text-gray-700">
-                      {{ getStatusStyle(item).text }}
-                    </span>
-                  </div>
-                </a-button>
-                <a-button class="play-btn" :disabled="isPlayDisabled(item)" @click="playRecording(item)">
-                  <div class="flex items-center">
-                    <i-material-symbols:pause v-if="playingItemId === item.id" class="text-red-500" />
-                    <i-material-symbols:play-arrow v-else class="text-green" />
-                    <span :class="item.audioUrl ? 'text-gray-900' : 'text-gray-400'" class="font-bold"> 播放 </span>
-                  </div>
-                </a-button>
-                <!-- <a-button class="play-btn" :disabled="!item.audioBlob" @click="downloadRecording(item)">
-                  <div class="flex items-center">
-                    <i-material-symbols:download class="text-blue-500" />
-                    <span :class="item.audioBlob ? 'text-gray-900' : 'text-gray-400'" class="font-bold"> 下載 </span>
-                  </div>
-                </a-button> -->
-                <a-button
-                  v-if="!readonly && item.showSkip"
-                  class="play-btn"
-                  :disabled="item.recordStatus === 2"
-                  @click="skipRecording(item)"
-                >
-                  <div class="flex items-center">
-                    <i-material-symbols:lock-sharp class="text-yellow-400" />
-                    <span class="text-gray-700 font-bold">此題已跳過</span>
-                  </div>
-                </a-button>
-              </div>
-            </td>
-            <td class="p-6 align-top">
-              <div class="flex flex-col">
-                <span> {{ item.member }}:</span>
-                <span class="whitespace-pre-wrap leading-relaxed text-gray-800 font-medium">
-                  {{ item.content }}
-                </span>
-                <span class="mt-4 text-[#F58220] text-sm italic pt-2">
-                  {{ item.note }}
-                </span>
-              </div>
-              <div class="mt-6 p-3 flex flex-col gap-2">
-                <span>{{ item.customer }}:</span>
-                <span>{{ item.order }}</span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <a-spin :spinning="loading" class="w-full">
+        <table class="w-full border-collapse">
+          <thead class="bg-orange-50 sticky top-0 z-10">
+            <tr class="divide-x border-b text-center">
+              <th class="w-48 py-3 text-mliNavy font-bold">題號 / 操作</th>
+              <th class="py-3 text-mliNavy font-bold">錄音文稿內容</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y-1 divide-gray-300">
+            <tr v-for="item in scripts" :key="item.id" :class="{ 'bg-gray-200': item.recordStatus === 2 }">
+              <td class="w-48 align-top p-6" :class="item.recordStatus === 2 ? 'bg-gray-200' : 'bg-[#FFF7ED]'">
+                <div class="flex flex-col items-center gap-4">
+                  <div class="text-gray-500 font-bold mb-2">{{ item.id }}</div>
+                  <a-button
+                    v-if="!readonly"
+                    class="recording-btn group"
+                    :disabled="isRecordingDisabled(item)"
+                    @click="recording(item)"
+                  >
+                    <div class="flex items-center">
+                      <i-material-symbols:radio-button-checked
+                        :class="[getStatusStyle(item).color, getStatusStyle(item).pulse ? 'animate-pulse' : '']"
+                      />
+                      <span class="font-bold text-gray-700">
+                        {{ getStatusStyle(item).text }}
+                      </span>
+                    </div>
+                  </a-button>
+                  <a-button class="play-btn" :disabled="isPlayDisabled(item)" @click="playRecording(item)">
+                    <div class="flex items-center">
+                      <i-material-symbols:pause v-if="playingItemId === item.id" class="text-red-500" />
+                      <i-material-symbols:play-arrow v-else class="text-green" />
+                      <span :class="item.audioUrl ? 'text-gray-900' : 'text-gray-400'" class="font-bold"> 播放 </span>
+                    </div>
+                  </a-button>
+                  <!-- <a-button class="play-btn" :disabled="!item.audioBlob" @click="downloadRecording(item)">
+                    <div class="flex items-center">
+                      <i-material-symbols:download class="text-blue-500" />
+                      <span :class="item.audioBlob ? 'text-gray-900' : 'text-gray-400'" class="font-bold"> 下載 </span>
+                    </div>
+                  </a-button> -->
+                  <a-button
+                    v-if="!readonly && item.showSkip"
+                    class="play-btn"
+                    :disabled="item.recordStatus === 2"
+                    @click="skipRecording(item)"
+                  >
+                    <div class="flex items-center">
+                      <i-material-symbols:lock-sharp class="text-yellow-400" />
+                      <span class="text-gray-700 font-bold">此題已跳過</span>
+                    </div>
+                  </a-button>
+                </div>
+              </td>
+              <td class="p-6 align-top">
+                <div class="flex flex-col">
+                  <span> {{ item.member }}:</span>
+                  <span class="whitespace-pre-wrap leading-relaxed text-gray-800 font-medium">
+                    {{ item.content }}
+                  </span>
+                  <span class="mt-4 text-[#F58220] text-sm italic pt-2">
+                    {{ item.note }}
+                  </span>
+                </div>
+                <div class="mt-6 p-3 flex flex-col gap-2">
+                  <span>{{ item.customer }}:</span>
+                  <span>{{ item.order }}</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </a-spin>
     </div>
     <CommonModal v-model:open="modalOpen" :title="modalTitle" :content="modalContent" ok-text="我知道了" />
     <CommonModal
@@ -117,10 +127,10 @@
 </template>
 
 <script setup lang="ts">
-import { LeftOutlined, CloudUploadOutlined } from '@ant-design/icons-vue'
+import { LeftOutlined, CloudUploadOutlined, DownloadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { reactive, computed, ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import router from '@/router'
 import MicRecorder from 'mic-recorder-to-mp3'
 import CommonModal from '@/components/CommonModal.vue'
@@ -145,6 +155,7 @@ type ScriptItem = {
 const props = withDefaults(defineProps<{ readonly?: boolean }>(), { readonly: false })
 const modalTitle = ref('')
 const modalContent = ref('')
+const loading = ref(true)
 const activeItem = ref<ScriptItem | null>(null)
 const playingItemId = ref<number | null>(null)
 const currentAudio = ref<HTMLAudioElement | null>(null)
@@ -176,8 +187,8 @@ const scripts = reactive<ScriptItem[]>([
     title: '播稿並錄音',
     actionLabel: '播稿並錄音',
     member: '業務員',
-    scriptAudioUrl: '/voice2.mp3',
-    content: `您所購買的是三商美邦人壽發行的投資型保險商品-金世紀副利變額萬能壽險Ａ型。以下將說明本商品內容及重要事項，請您聽完後逐一回答`,
+    scriptAudioUrl: '/voice2.wav',
+    content: `您所購買的是三商美邦人壽發行的投資型保險商品-金世紀復利變額萬能壽險Ａ型。以下將說明本商品內容及重要事項，請您聽完後逐一回答`,
     note: '(若有2人(含)以上客戶同時錄音，請個別唸出自己的姓名再回答)',
     customer: '客戶',
     order: '同意 / 不同意',
@@ -189,7 +200,7 @@ const scripts = reactive<ScriptItem[]>([
     actionLabel: '開始錄音',
     member: '業務員',
     content: `本保險「投資標的」是可以轉換的，請問需要為您說明【投資標的轉換】條款內容嗎？`,
-    note: '(若客戶回答「需要」時，須說明以下《》內容',
+    note: '(若客戶回答「需要」時，須說明以下《》內容）',
     customer: '客戶',
     order: '需要 / 不需要',
     recordStatus: 0 // 0: 未錄音, 1: 錄音中, 2: 錄音結束
@@ -199,7 +210,7 @@ const scripts = reactive<ScriptItem[]>([
     title: '播稿並錄音',
     actionLabel: '播稿並錄音',
     member: '業務員',
-    scriptAudioUrl: '/voice4.mp3',
+    scriptAudioUrl: '/voice4.wav',
     content: `22-1. 有關【投資標的轉換】提供以下轉換方式：1. 停利機制為所持有之投資標的報酬率達到您所設定之停利點時，將全數金額轉出至您所指定之投資標的，若未指定則轉出至「停泊標的」。 2. 申請轉換為設定將持有之「一般投資標的」或「停泊標的」轉出至所指定之「一般投資標的」。 22-2. 以上說明，請問您清楚嗎？`,
     note: '',
     customer: '客戶',
@@ -233,7 +244,6 @@ const getStatusStyle = computed(() => {
         } else {
           return { text: '重新錄音', color: 'text-black', pulse: false }
         }
-
       default:
         return { text: item.actionLabel || '開始錄音', color: 'text-red-500', pulse: false }
     }
@@ -244,7 +254,8 @@ const buildSnapshot = () =>
   scripts.map(item => ({
     id: item.id,
     recordStatus: item.recordStatus ?? 0,
-    hasAudio: !!item.audioBlob
+    hasAudio: !!item.audioBlob,
+    audioKey: item.audioUrl || ''
   }))
 
 const {
@@ -262,9 +273,11 @@ const {
 })
 
 const backToList = () => {
+  stopAllPlayback()
   requestLeave('/recordingList')
 }
 
+//開始錄音
 const startRecording = async (item: ScriptItem) => {
   if (item.audioUrl) {
     URL.revokeObjectURL(item.audioUrl)
@@ -276,6 +289,7 @@ const startRecording = async (item: ScriptItem) => {
   activeItem.value = item
 }
 
+//停止錄音
 const stopRecording = async (item: ScriptItem) => {
   const [, recordedBlob] = await recorder.stop().getMp3()
   if (item.scriptAudioUrl) {
@@ -293,6 +307,7 @@ const stopRecording = async (item: ScriptItem) => {
   activeItem.value = null
 }
 
+//播放錄音
 const playRecording = (item: ScriptItem) => {
   if (!item.audioUrl) return
   stopScriptPlayback()
@@ -334,6 +349,7 @@ const playRecording = (item: ScriptItem) => {
 //   URL.revokeObjectURL(url)
 // }
 
+//終止播放錄音
 const stopListeningPlayback = () => {
   if (!currentAudio.value) return
   currentAudio.value.pause()
@@ -342,6 +358,7 @@ const stopListeningPlayback = () => {
   playingItemId.value = null
 }
 
+//停掉播稿音檔的播放
 const stopScriptPlayback = () => {
   if (!scriptAudio.value) return
   scriptAudio.value.pause()
@@ -350,6 +367,13 @@ const stopScriptPlayback = () => {
   scriptPlayingItemId.value = null
 }
 
+//停掉所有播放
+const stopAllPlayback = () => {
+  stopListeningPlayback()
+  stopScriptPlayback()
+}
+
+//與播稿錄音檔的合成
 const concatScriptAndRecording = async (scriptUrl: string, recordedBlob: Blob) => {
   const audioContext = new AudioContext()
   const decode = async (buffer: ArrayBuffer) => audioContext.decodeAudioData(buffer)
@@ -443,12 +467,14 @@ const concatScriptAndRecording = async (scriptUrl: string, recordedBlob: Blob) =
   }
 }
 
+//播放鈕禁用
 const isPlayDisabled = (item: ScriptItem) => {
   if (!item.audioUrl) return true
   if (playingItemId.value && playingItemId.value !== item.id) return true
   return false
 }
 
+//錄音禁用
 const isRecordingDisabled = (item: ScriptItem) => {
   if (playingItemId.value || scriptPlayingItemId.value) return true
   return !!activeItem.value && activeItem.value !== item && activeItem.value.recordStatus === 1
@@ -461,6 +487,7 @@ const showModal = (title: string, content: string) => {
 }
 
 const handleUpload = () => {
+  stopAllPlayback()
   const missingItems = scripts.filter(item => item.recordStatus !== 2 || !item.audioBlob)
   if (missingItems.length > 0) {
     const missingList = missingItems.map(item => `#${item.id} ${item.title}`).join('、')
@@ -473,6 +500,148 @@ const handleUpload = () => {
     message.success({ content: '上傳完成', key: messageKey, duration: 1 })
     router.push('/recordingList')
   }, 1200)
+}
+
+const concatRecordingsToWav = async (blobs: Blob[]) => {
+  const audioContext = new AudioContext()
+  const decode = async (buffer: ArrayBuffer) => audioContext.decodeAudioData(buffer)
+  const resample = async (buffer: AudioBuffer, targetRate: number) => {
+    if (buffer.sampleRate === targetRate) return buffer
+    const offline = new OfflineAudioContext(buffer.numberOfChannels, Math.ceil(buffer.duration * targetRate), targetRate)
+    const source = offline.createBufferSource()
+    source.buffer = buffer
+    source.connect(offline.destination)
+    source.start()
+    return offline.startRendering()
+  }
+  const encodeWav = (buffer: AudioBuffer) => {
+    const numChannels = buffer.numberOfChannels
+    const sampleRate = buffer.sampleRate
+    const length = buffer.length * numChannels * 2 + 44
+    const arrayBuffer = new ArrayBuffer(length)
+    const view = new DataView(arrayBuffer)
+    let offset = 0
+    const writeString = (str: string) => {
+      for (let i = 0; i < str.length; i += 1) {
+        view.setUint8(offset, str.charCodeAt(i))
+        offset += 1
+      }
+    }
+    writeString('RIFF')
+    view.setUint32(offset, length - 8, true)
+    offset += 4
+    writeString('WAVE')
+    writeString('fmt ')
+    view.setUint32(offset, 16, true)
+    offset += 4
+    view.setUint16(offset, 1, true)
+    offset += 2
+    view.setUint16(offset, numChannels, true)
+    offset += 2
+    view.setUint32(offset, sampleRate, true)
+    offset += 4
+    view.setUint32(offset, sampleRate * numChannels * 2, true)
+    offset += 4
+    view.setUint16(offset, numChannels * 2, true)
+    offset += 2
+    view.setUint16(offset, 16, true)
+    offset += 2
+    writeString('data')
+    view.setUint32(offset, length - 44, true)
+    offset += 4
+    const channels = []
+    for (let i = 0; i < numChannels; i += 1) {
+      channels.push(buffer.getChannelData(i))
+    }
+    for (let i = 0; i < buffer.length; i += 1) {
+      for (let ch = 0; ch < numChannels; ch += 1) {
+        const channel = channels[ch] || channels[0]
+        let sample = channel?.[i] ?? 0
+        sample = Math.max(-1, Math.min(1, sample))
+        view.setInt16(offset, sample * 0x7fff, true)
+        offset += 2
+      }
+    }
+    return new Blob([view], { type: 'audio/wav' })
+  }
+  try {
+    if (blobs.length === 0) {
+      return new Blob([], { type: 'audio/wav' })
+    }
+    let targetRate = 0
+    let channels = 1
+    let totalLength = 0
+    for (const blob of blobs) {
+      const arrayBuffer = await blob.arrayBuffer()
+      const decoded = await decode(arrayBuffer)
+      if (!targetRate) targetRate = decoded.sampleRate
+      const resampled = await resample(decoded, targetRate)
+      channels = Math.max(channels, resampled.numberOfChannels)
+      totalLength += resampled.length
+    }
+    if (!targetRate) {
+      return new Blob([], { type: 'audio/wav' })
+    }
+    const combined = audioContext.createBuffer(channels, totalLength, targetRate)
+    let offset = 0
+    for (const blob of blobs) {
+      const arrayBuffer = await blob.arrayBuffer()
+      const decoded = await decode(arrayBuffer)
+      const resampled = await resample(decoded, targetRate)
+      for (let ch = 0; ch < channels; ch += 1) {
+        const channelData = combined.getChannelData(ch)
+        const sourceData = resampled.getChannelData(Math.min(ch, resampled.numberOfChannels - 1))
+        channelData.set(sourceData, offset)
+      }
+      offset += resampled.length
+    }
+    return encodeWav(combined)
+  } finally {
+    audioContext.close()
+  }
+}
+
+const handleDownloadAll = async () => {
+  stopAllPlayback()
+  if (!caseId.value) {
+    message.warning('缺少案件編號，無法下載')
+    return
+  }
+  const messageKey = 'downloadRecording'
+  message.loading({ content: '錄音合併中...', key: messageKey, duration: 0 })
+  const blobs: Blob[] = []
+  for (const item of scripts) {
+    if (item.audioBlob) {
+      blobs.push(item.audioBlob)
+      continue
+    }
+    try {
+      const record = await loadAudio(caseId.value, item.id)
+      if (record?.blob) {
+        blobs.push(record.blob)
+      }
+    } catch (_error: unknown) {
+      // ignore load failures
+    }
+  }
+  if (blobs.length === 0) {
+    message.error({ content: '沒有可下載的錄音檔', key: messageKey, duration: 1 })
+    return
+  }
+  try {
+    const combined = await concatRecordingsToWav(blobs)
+    const url = URL.createObjectURL(combined)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${caseId.value}-recording.wav`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+    message.success({ content: '下載完成', key: messageKey, duration: 1 })
+  } catch (_error: unknown) {
+    message.error({ content: '合併失敗', key: messageKey, duration: 1 })
+  }
 }
 
 const beginRecording = async (item: ScriptItem) => {
@@ -536,6 +705,10 @@ const confirmReRecord = async () => {
   reRecordModalOpen.value = false
   pendingReRecordItem.value = null
   if (!item) return
+  if (item.scriptAudioUrl) {
+    await playScriptThenRecord(item)
+    return
+  }
   await beginRecording(item)
 }
 
@@ -547,7 +720,7 @@ const cancelReRecord = () => {
 // 3. 切換狀態的邏輯
 const recording = async (item: ScriptItem) => {
   if (props.readonly) return
-  // TODO: 播稿並錄音需先播放既有稿件音檔，再開始錄音
+  // 播稿並錄音需先播放既有稿件音檔，再開始錄音
   // 同一筆已在錄音中：這次點擊視為「停止」
   if (item.recordStatus === 1 && activeItem.value === item) {
     try {
@@ -572,10 +745,13 @@ const recording = async (item: ScriptItem) => {
   await beginRecording(item)
 }
 
-onMounted(() => {
-  syncSnapshot()
-  if (!caseId.value) return
-  scripts.forEach(async item => {
+onMounted(async () => {
+  if (!caseId.value) {
+    syncSnapshot()
+    loading.value = false
+    return
+  }
+  const tasks = scripts.map(async item => {
     if (item.audioBlob) return
     try {
       const record = await loadAudio(caseId.value, item.id)
@@ -587,6 +763,14 @@ onMounted(() => {
       // ignore load failures
     }
   })
+  await Promise.all(tasks)
+  syncSnapshot()
+  loading.value = false
+})
+
+onBeforeRouteLeave(() => {
+  stopAllPlayback()
+  return true
 })
 </script>
 

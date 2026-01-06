@@ -17,7 +17,6 @@
         </a-button>
       </div>
     </div>
-
     <div class="w-full max-w-3xl bg-white rounded-2xl shadow-sm border border-gray-200 p-10 mb-10">
       <div class="mb-10 flex items-start gap-4 bg-orange-50 p-4 rounded-lg">
         <div class="w-1.5 h-12 bg-[#F58220] rounded-full"></div>
@@ -26,7 +25,6 @@
           <p class="text-gray-500 text-sm mt-1 m-0">請更新客戶資訊與備註內容，儲存後可回到清單。</p>
         </div>
       </div>
-
       <a-form layout="vertical" :model="formState">
         <div class="grid grid-cols-2 gap-x-8 gap-y-2">
           <a-form-item label="案件編號">
@@ -35,7 +33,6 @@
           <a-form-item label="客戶姓名" required>
             <a-input v-model:value="formState.name" placeholder="請輸入客戶姓名" class="!h-11" />
           </a-form-item>
-
           <a-form-item label="身分證字號" required>
             <a-input v-model:value="formState.idNumber" placeholder="請輸入身分證字號" class="!h-11" />
           </a-form-item>
@@ -45,14 +42,12 @@
           <a-form-item label="說明">
             <a-input v-model:value="formState.direction" placeholder="請輸入說明" class="!h-11" />
           </a-form-item>
-
           <a-form-item label="備註" class="col-span-2">
             <a-textarea v-model:value="formState.remark" placeholder="請輸入備註" :rows="4" />
           </a-form-item>
         </div>
       </a-form>
     </div>
-
     <CommonModal
       v-model:open="leaveModalOpen"
       :title="leaveTitle"
@@ -67,19 +62,17 @@
 </template>
 
 <script setup lang="ts">
+import { message } from 'ant-design-vue'
 import { reactive, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { LeftOutlined, SaveOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import CommonModal from '@/components/CommonModal.vue'
 import { useUnsavedWarning } from '@/composables/useUnsavedWarning'
 import { useRecordingStore, type RecordingCase } from '@/stores/recording'
-
-const router = useRouter()
+import CommonModal from '@/components/CommonModal.vue'
 const route = useRoute()
+const router = useRouter()
 const recordingStore = useRecordingStore()
 const isEditMode = ref(false)
-
 const formState = reactive({
   caseId: '',
   name: '',

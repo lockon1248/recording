@@ -86,16 +86,14 @@
 <script setup lang="ts">
 import { message } from 'ant-design-vue'
 import { ref, reactive, onMounted } from 'vue'
-import { useMemberStore, type Member } from '@/stores/member'
-import { LeftOutlined, SaveOutlined } from '@ant-design/icons-vue'
 import { useRouter, useRoute } from 'vue-router'
-import CommonModal from '@/components/CommonModal.vue'
+import { useMemberStore, type Member } from '@/stores/member'
 import { useUnsavedWarning } from '@/composables/useUnsavedWarning'
-
-const router = useRouter()
+import { LeftOutlined, SaveOutlined } from '@ant-design/icons-vue'
+import CommonModal from '@/components/CommonModal.vue'
 const route = useRoute()
+const router = useRouter()
 const memberStore = useMemberStore()
-
 const formState = reactive({
   empId: '',
   name: '',
